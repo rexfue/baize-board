@@ -1,6 +1,6 @@
 {
-  "name": "Baize Board",
-  "short_name": "Baize",
+  "name": "Snooker Board",
+  "short_name": "Snooker",
   "description": "Snooker-Scoreboard mit Restwert, Fouls, Free Ball und Frame-Zählung",
   "start_url": "./",
   "scope": "./",
