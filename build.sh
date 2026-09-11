@@ -29,5 +29,5 @@ TAIL
 } > index.html
 # snooker.html beginnt mit <title>/<link>/<style> und dann <main>; head/body-Grenze setzen:
 perl -0pi -e 's#</style>\n\n<main#</style>\n</head>\n<body>\n<main#' index.html
-sed "s/__VERSION__/$VERSION/" sw.js > sw.js.tmp && mv sw.js.tmp sw.js
+sed -E "s/^const VERSION = '[^']*';/const VERSION = '$VERSION';/" sw.js > sw.js.tmp && mv sw.js.tmp sw.js
 echo "index.html gebaut, Service-Worker-Version $VERSION"

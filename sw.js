@@ -1,6 +1,6 @@
 // Service Worker: App-Shell offline verfügbar halten.
 // VERSION wird vom Build-Skript gesetzt; eine neue Version ersetzt den alten Cache.
-const VERSION = '20260911-093436';
+const VERSION = '20260911-095143';
 const CACHE = 'baize-' + VERSION;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
