@@ -1,0 +1,569 @@
+<title>Baize Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #0f1712;
+    --surface: #172119;
+    --surface-2: #1f2c22;
+    --line: #2c3b30;
+    --text: #eae6d8;
+    --muted: #93a297;
+    --accent: #3c9a62;
+    --accent-ink: #0f1712;
+    --warn: #e0b048;
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+    --ball-shadow: 0 6px 14px rgba(0,0,0,.55), inset 0 -6px 10px rgba(0,0,0,.35), inset 0 4px 8px rgba(255,255,255,.18);
+    --red:#c0392b; --yellow:#e3b93b; --green:#2e8b4a; --brown:#8b5a2b; --blue:#2f5fb3; --pink:#e8a0b4; --black:#16181a; --cue:#f3efe4;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #e6ebe4; --surface: #f6f8f3; --surface-2: #ffffff; --line: #cbd6cb;
+      --text: #14201a; --muted: #5c6b61; --accent: #24784a; --accent-ink: #f6f8f3; --warn: #a3701a;
+      --shadow: 0 8px 24px rgba(20,32,26,.12);
+      --ball-shadow: 0 5px 12px rgba(20,32,26,.28), inset 0 -6px 10px rgba(0,0,0,.28), inset 0 4px 8px rgba(255,255,255,.28);
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #e6ebe4; --surface: #f6f8f3; --surface-2: #ffffff; --line: #cbd6cb;
+    --text: #14201a; --muted: #5c6b61; --accent: #24784a; --accent-ink: #f6f8f3; --warn: #a3701a;
+    --shadow: 0 8px 24px rgba(20,32,26,.12);
+    --ball-shadow: 0 5px 12px rgba(20,32,26,.28), inset 0 -6px 10px rgba(0,0,0,.28), inset 0 4px 8px rgba(255,255,255,.28);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Barlow", "Helvetica Neue", Arial, sans-serif; font-size: 15px; line-height: 1.4;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cond { font-family: "Barlow Condensed", "Arial Narrow", "Barlow", sans-serif; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .app { max-width: 600px; margin: 0 auto; padding: calc(14px + env(safe-area-inset-top)) 14px calc(40px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
+
+  /* Header */
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+  .brand { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 700; font-size: 20px; letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .brand-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--red); box-shadow: inset 0 -2px 3px rgba(0,0,0,.4), inset 0 2px 3px rgba(255,255,255,.3); }
+  .top-actions { display: flex; gap: 6px; }
+  .ghost { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; color: var(--muted); font-weight: 500; }
+  .ghost:hover { color: var(--text); border-color: var(--muted); }
+  .ghost[aria-expanded="true"] { color: var(--text); border-color: var(--accent); }
+
+  /* Panels */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .panel h2 { margin: 0; font-family: "Barlow Condensed", sans-serif; font-size: 18px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .field { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; }
+  .field label { color: var(--muted); font-size: 14px; }
+  .field input, .field select { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%; }
+  .panel p { margin: 0; color: var(--muted); font-size: 14px; max-width: 60ch; }
+  .panel kbd { font: 12px/1 ui-monospace, Menlo, monospace; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 2px 5px; color: var(--text); }
+  .panel ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+  .panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Scoreboard */
+  .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; box-shadow: var(--shadow); }
+  .player { position: relative; padding: 10px 12px 8px; border-radius: 10px; background: var(--surface-2); border: 1px solid transparent; display: flex; flex-direction: column; gap: 2px; min-width: 0; transition: border-color .2s; }
+  .player.active { border-color: var(--accent); }
+  .player.p1 { text-align: right; align-items: flex-end; }
+  .pname { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 17px; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .player.active .pname { color: var(--text); }
+  .cue { width: 9px; height: 9px; border-radius: 50%; background: var(--cue); box-shadow: 0 1px 3px rgba(0,0,0,.5); flex: none; opacity: 0; }
+  .player.active .cue { opacity: 1; }
+  .score { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: clamp(52px, 15vw, 76px); line-height: .95; letter-spacing: -.01em; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .player.active .score { color: var(--text); }
+  .pmeta { font-size: 13px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+  .player.p1 .pmeta { justify-content: flex-end; }
+  .pmeta b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .brk-now { color: var(--accent); font-weight: 600; }
+  .dots { display: flex; flex-wrap: wrap; gap: 3px; min-height: 10px; margin-top: 4px; max-width: 100%; }
+  .player.p1 .dots { justify-content: flex-end; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: inset 0 -1px 2px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.15); }
+  .centre { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0 6px; min-width: 74px; }
+  .frames { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 30px; font-variant-numeric: tabular-nums; display: flex; gap: 6px; align-items: baseline; }
+  .frames span { color: var(--muted); font-weight: 500; }
+  .bo { font-size: 12px; color: var(--muted); text-align: center; letter-spacing: .04em; text-transform: uppercase; line-height: 1.25; }
+
+  /* Status */
+  .status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .tile .k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .tile .v { font-family: "Barlow Condensed", sans-serif; font-weight: 600; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; }
+  .tile .v small { font-size: 13px; font-family: "Barlow", sans-serif; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+  .tile .v .dot { width: 14px; height: 14px; }
+  .msg { grid-column: 1 / -1; text-align: center; font-size: 14px; color: var(--muted); padding: 2px 4px; min-height: 20px; }
+  .msg.warn { color: var(--warn); font-weight: 600; }
+  .msg.win { color: var(--accent); font-weight: 600; }
+
+  /* Balls */
+  .balls { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 10px 10px; }
+  .ball-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: start; }
+  .ball-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ball { width: 100%; aspect-ratio: 1; max-width: 58px; border-radius: 50%; border: 0; position: relative; box-shadow: var(--ball-shadow); background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.55), rgba(255,255,255,0) 38%), var(--c); color: #fff; font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 22px; text-shadow: 0 1px 2px rgba(0,0,0,.5); transition: transform .08s, opacity .15s, box-shadow .15s; }
+  .ball:active:not(:disabled) { transform: translateY(2px) scale(.97); }
+  .ball:disabled { opacity: .28; box-shadow: none; cursor: default; filter: saturate(.6); }
+  .ball.on:not(:disabled) { box-shadow: var(--ball-shadow), 0 0 0 3px var(--surface), 0 0 0 5px var(--accent); }
+  .ball.dark-text { color: #1b1b1b; text-shadow: 0 1px 1px rgba(255,255,255,.4); }
+  .ball.black { box-shadow: var(--ball-shadow), 0 0 0 1px var(--line); }
+  .ball.black.on:not(:disabled) { box-shadow: var(--ball-shadow), 0 0 0 1px var(--line), 0 0 0 3px var(--surface), 0 0 0 5px var(--accent); }
+  .ball.cueball { color: #333; text-shadow: none; font-size: 15px; letter-spacing: .04em; }
+  .ball.cueball.fb-on { box-shadow: var(--ball-shadow), 0 0 0 3px var(--surface), 0 0 0 5px var(--warn); }
+  .bl { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); text-align: center; line-height: 1.1; }
+  .ball-cell.disabled .bl { opacity: .5; }
+
+  /* Actions */
+  .actions { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .btn { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 8px; font-weight: 600; font-family: "Barlow Condensed", sans-serif; font-size: 17px; letter-spacing: .04em; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; transition: background .15s, border-color .15s; }
+  .btn:hover:not(:disabled) { border-color: var(--muted); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.foul { border-color: var(--warn); color: var(--warn); }
+  .btn.foul[aria-expanded="true"] { background: var(--warn); color: var(--bg); }
+  .btn.danger:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+  .btn .sub { font-family: "Barlow", sans-serif; font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted); }
+  .btn.primary .sub { color: var(--accent-ink); opacity: .8; }
+  .foul-box { display: grid; grid-template-columns: auto repeat(4, 1fr) auto; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--warn); border-radius: 10px; padding: 8px 10px; }
+  .foul-box .k { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); font-weight: 600; }
+  .foul-box .btn { min-height: 42px; padding: 8px; font-size: 20px; }
+  .foul-box .btn.suggest { border-color: var(--warn); }
+  .foul-box .x { background: transparent; border: 0; color: var(--muted); font-size: 20px; padding: 4px 8px; }
+
+  /* Log */
+  .log { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .log h2 { margin: 0; font-family: "Barlow Condensed", sans-serif; font-size: 15px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+  .log h2 span { font-weight: 500; }
+  .visits { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+  .visit { display: grid; grid-template-columns: 6px 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .visit:last-child { border-bottom: 0; }
+  .visit .bar { width: 6px; height: 22px; border-radius: 3px; background: var(--line); }
+  .visit.p0 .bar { background: var(--accent); }
+  .visit.p1 .bar { background: var(--muted); }
+  .visit .who { font-weight: 600; }
+  .visit .what { color: var(--muted); }
+  .visit .what.f { color: var(--warn); }
+  .visit .pts { font-family: "Barlow Condensed", sans-serif; font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .visit .dots { margin-top: 2px; }
+  .empty { color: var(--muted); font-size: 14px; }
+  .results { display: flex; flex-wrap: wrap; gap: 6px; }
+  .res { font-size: 13px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .res b { color: var(--text); }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(10px); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-weight: 500; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; box-shadow: var(--shadow); max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 420px) {
+    .app { padding: calc(10px + env(safe-area-inset-top)) 10px calc(40px + env(safe-area-inset-bottom)); }
+    .status { grid-template-columns: repeat(2, 1fr); }
+    .tile .v { font-size: 26px; }
+    .ball { font-size: 18px; }
+    .ball.cueball { font-size: 12px; }
+    .btn { font-size: 15px; padding: 10px 4px; }
+    .foul-box { grid-template-columns: repeat(4, 1fr) auto; }
+    .foul-box .k { grid-column: 1 / -1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<main class="app">
+  <header class="top">
+    <div class="brand"><span class="brand-dot"></span>Baize Board</div>
+    <div class="top-actions">
+      <button class="ghost" id="btn-settings" aria-expanded="false" aria-controls="settings">Match</button>
+      <button class="ghost" id="btn-help" aria-expanded="false" aria-controls="help" aria-label="Hilfe">?</button>
+    </div>
+  </header>
+
+  <section class="panel" id="settings" hidden>
+    <h2>Match</h2>
+    <div class="field"><label for="name0">Spieler 1</label><input id="name0" maxlength="24" autocomplete="off"></div>
+    <div class="field"><label for="name1">Spieler 2</label><input id="name1" maxlength="24" autocomplete="off"></div>
+    <div class="field"><label for="bestof">Best of</label><select id="bestof"></select></div>
+    <p>Namen und Modus gelten sofort. „Neues Match“ setzt Frames und Punkte zurück.</p>
+    <div class="panel-actions">
+      <button class="btn danger" id="btn-newmatch">Neues Match</button>
+      <button class="btn" id="btn-settings-close">Schließen</button>
+    </div>
+  </section>
+
+  <section class="panel" id="help" hidden>
+    <h2>So funktioniert’s</h2>
+    <ul>
+      <li>Versenkte Kugel antippen – nur regelkonforme Kugeln sind aktiv. Der grüne Ring markiert „Ball on“.</li>
+      <li><b>Sicherheit</b> beendet den Break ohne Foul und wechselt den Spieler.</li>
+      <li><b>Foul</b>: Wert wählen (4–7), die Punkte gehen an den Gegner. Bei „Miss“ einfach erneut Foul drücken. Soll der Foulende weiterspielen, danach „Wechsel“ drücken.</li>
+      <li><b>Free Ball</b> (weiße Kugel) vor dem ersten Stoß einer Aufnahme aktivieren: die nächste Kugel zählt wie der Ball on.</li>
+      <li><b>Restwert</b> = maximal noch erzielbare Punkte: Rote × 8 + 27, plus 7 wenn gerade eine Farbe „on“ ist.</li>
+      <li>Nach Schwarz mit Gleichstand wird Schwarz neu aufgesetzt; wer beginnt, per „Wechsel“ festlegen.</li>
+      <li>Tastatur: <kbd>1</kbd>–<kbd>7</kbd> Kugeln, <kbd>S</kbd> Sicherheit, <kbd>F</kbd> Foul, <kbd>B</kbd> Free Ball, <kbd>U</kbd> Rückgängig, <kbd>W</kbd> Wechsel.</li>
+      <li>Der Stand wird im Browser gespeichert und übersteht ein Neuladen.</li>
+    </ul>
+    <div class="panel-actions"><button class="btn" id="btn-help-close">Schließen</button></div>
+  </section>
+
+  <section class="scoreboard" id="scoreboard" aria-live="polite"></section>
+  <section class="status" id="status"></section>
+  <section class="balls" id="balls"></section>
+  <section class="actions" id="actions"></section>
+  <section class="log" id="log"></section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  const BALLS = {
+    red:    { name: 'Rot',     v: 1, css: 'var(--red)' },
+    yellow: { name: 'Gelb',    v: 2, css: 'var(--yellow)' },
+    green:  { name: 'Grün',    v: 3, css: 'var(--green)' },
+    brown:  { name: 'Braun',   v: 4, css: 'var(--brown)' },
+    blue:   { name: 'Blau',    v: 5, css: 'var(--blue)' },
+    pink:   { name: 'Pink',    v: 6, css: 'var(--pink)' },
+    black:  { name: 'Schwarz', v: 7, css: 'var(--black)' },
+  };
+  const ORDER = ['red', 'yellow', 'green', 'brown', 'blue', 'pink', 'black'];
+  const SEQ = ORDER.slice(1);
+  const KEY = 'baize-board-v1';
+  const BEST_OF = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 25, 35];
+
+  // ---------- State ----------
+  function newFrame(starter) {
+    return { scores: [0, 0], reds: 15, phase: 'reds', expect: 'red', seqIdx: 0, cur: starter,
+             brk: 0, brkBalls: [], freeBall: false, ended: false, winner: null, visits: [], high: [0, 0], respot: false };
+  }
+  function newMatch(names, bestOf) {
+    return { names, bestOf, frames: [0, 0], frameNo: 1, starter: 0, frame: newFrame(0), results: [], matchOver: false, undo: [] };
+  }
+  function load() {
+    try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* Speicher nicht verfügbar – weiter ohne */ }
+  }
+  let S = load() || newMatch(['Spieler 1', 'Spieler 2'], 5);
+
+  const UNDO_KEYS = ['frames', 'frameNo', 'starter', 'frame', 'results', 'matchOver'];
+  function snapshot() {
+    const snap = {}; UNDO_KEYS.forEach(k => snap[k] = S[k]);
+    S.undo.push(JSON.stringify(snap));
+    if (S.undo.length > 200) S.undo.shift();
+  }
+  function undo() {
+    const raw = S.undo.pop(); if (!raw) return;
+    Object.assign(S, JSON.parse(raw));
+    foulOpen = false; commit();
+  }
+  function commit() { save(); render(); }
+
+  // ---------- Rules ----------
+  function remaining(f) {
+    if (f.ended) return 0;
+    if (f.phase === 'reds') return f.reds * 8 + 27 + (f.expect === 'colour' ? 7 : 0);
+    return SEQ.slice(f.seqIdx).reduce((a, b) => a + BALLS[b].v, 0);
+  }
+  function ballOn(f) {
+    if (f.ended) return { label: '–', id: null };
+    if (f.phase === 'reds') return f.expect === 'red' ? { label: 'Rot', id: 'red' } : { label: 'Farbe', id: null };
+    return { label: BALLS[SEQ[f.seqIdx]].name, id: SEQ[f.seqIdx] };
+  }
+  function legal(f, id) {
+    if (f.ended) return false;
+    if (f.phase === 'reds') {
+      if (f.expect === 'red') return id === 'red' || f.freeBall;
+      return id !== 'red';
+    }
+    return f.freeBall || id === SEQ[f.seqIdx];
+  }
+  function minFoul(f) {
+    return f.phase === 'colours' ? Math.max(4, BALLS[SEQ[f.seqIdx]].v) : 4;
+  }
+  function situation(f) {
+    const n = S.names;
+    if (f.ended) return { text: `${n[f.winner]} gewinnt den Frame ${f.scores[0]}–${f.scores[1]}`, cls: 'win' };
+    const rem = remaining(f), d = f.scores[0] - f.scores[1];
+    if (d === 0) return f.respot ? { text: 'Gleichstand – Schwarz neu aufgesetzt', cls: 'warn' } : { text: 'Gleichstand', cls: '' };
+    const lead = d > 0 ? 0 : 1, trail = 1 - lead, diff = Math.abs(d);
+    if (diff > rem) {
+      const k = Math.ceil((diff - rem) / minFoul(f));
+      return { text: `${n[trail]} braucht ${k} Snooker${k === 1 ? '' : ''} (${diff - rem} über dem Restwert)`, cls: 'warn' };
+    }
+    if (diff === rem) return { text: `${n[trail]} kann höchstens noch ausgleichen`, cls: 'warn' };
+    return { text: `${n[lead]} führt mit ${diff} · ${n[trail]} kann noch ${rem - diff} Punkte vorlegen`, cls: '' };
+  }
+
+  // ---------- Actions ----------
+  function closeVisit(entry, next) {
+    const f = S.frame;
+    if (entry) f.visits.push(entry);
+    f.brk = 0; f.brkBalls = []; f.freeBall = false;
+    f.cur = next == null ? 1 - f.cur : next;
+    if (f.reds > 0) { f.phase = 'reds'; f.expect = 'red'; }
+    else if (f.phase === 'reds') { f.phase = 'colours'; f.seqIdx = 0; }
+  }
+  function visitEntry(f, extra) {
+    return Object.assign({ p: f.cur, brk: f.brk, balls: f.brkBalls.slice() }, extra);
+  }
+  function finishFrame(w) {
+    const f = S.frame;
+    if (f.brk > 0) f.visits.push(visitEntry(f, { reason: 'Frame' }));
+    f.ended = true; f.winner = w; f.brk = 0; f.brkBalls = []; f.freeBall = false;
+    S.frames[w]++;
+    S.results.push({ scores: f.scores.slice(), winner: w, high: f.high.slice() });
+    if (S.frames[w] > S.bestOf / 2) S.matchOver = true;
+    toast(S.matchOver ? `${S.names[w]} gewinnt das Match ${S.frames[0]}–${S.frames[1]}` : `Frame an ${S.names[w]}`);
+  }
+
+  function pot(id) {
+    const f = S.frame;
+    if (!legal(f, id)) return;
+    snapshot();
+    const p = f.cur; let pts;
+    if (f.phase === 'reds' && f.expect === 'red') {
+      if (id === 'red') f.reds--;          // Free Ball: zählt wie Rot, Rote bleiben
+      pts = 1; f.expect = 'colour';
+    } else if (f.phase === 'reds') {
+      pts = BALLS[id].v;
+      if (f.reds > 0) f.expect = 'red'; else { f.phase = 'colours'; f.seqIdx = 0; }
+    } else {
+      const on = SEQ[f.seqIdx]; pts = BALLS[on].v;
+      if (id === on) f.seqIdx++;           // Free Ball auf andere Kugel: Ball on bleibt
+    }
+    f.freeBall = false;
+    f.scores[p] += pts; f.brk += pts; f.brkBalls.push(id);
+    if (f.brk > f.high[p]) f.high[p] = f.brk;
+    if (f.phase === 'colours' && f.seqIdx > 5) {
+      if (f.scores[0] === f.scores[1]) {
+        f.seqIdx = 5; f.respot = true;
+        closeVisit(visitEntry(f, { reason: 'Schwarz neu aufgesetzt' }));
+        toast('Gleichstand – Schwarz wird neu aufgesetzt');
+      } else finishFrame(f.scores[0] > f.scores[1] ? 0 : 1);
+    }
+    commit();
+  }
+  function safety() {
+    const f = S.frame; if (f.ended) return;
+    snapshot();
+    closeVisit(f.brk > 0 ? visitEntry(f, { reason: 'Sicherheit' }) : null);
+    commit();
+  }
+  function foul(v) {
+    const f = S.frame; if (f.ended) return;
+    snapshot();
+    const p = f.cur, o = 1 - p;
+    f.scores[o] += v;
+    const entry = visitEntry(f, { foul: v });
+    const blackOnly = f.phase === 'colours' && f.seqIdx === 5;
+    if (blackOnly && f.scores[0] !== f.scores[1]) {
+      f.visits.push(entry); f.brk = 0; f.brkBalls = [];
+      finishFrame(f.scores[0] > f.scores[1] ? 0 : 1);
+    } else closeVisit(entry, o);
+    foulOpen = false;
+    commit();
+  }
+  function swap() {
+    const f = S.frame; if (f.ended || f.brk > 0) return;
+    snapshot(); f.cur = 1 - f.cur; f.freeBall = false; commit();
+  }
+  function toggleFreeBall() {
+    const f = S.frame; if (f.ended || f.brk > 0) return;
+    if (f.phase === 'reds' && f.expect === 'colour') return;
+    snapshot(); f.freeBall = !f.freeBall; commit();
+  }
+  function concede() {
+    const f = S.frame; if (f.ended || f.scores[0] === f.scores[1]) return;
+    snapshot(); finishFrame(f.scores[0] > f.scores[1] ? 0 : 1); commit();
+  }
+  function nextFrame() {
+    if (!S.frame.ended || S.matchOver) return;
+    snapshot(); S.frameNo++; S.starter = 1 - S.starter; S.frame = newFrame(S.starter); commit();
+  }
+  function resetMatch() {
+    S = newMatch(S.names.slice(), S.bestOf); foulOpen = false; commit();
+    toast('Neues Match gestartet');
+  }
+
+  // ---------- Rendering ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const dot = id => `<span class="dot" style="background:${BALLS[id].css}"></span>`;
+  const dots = arr => arr.map(dot).join('');
+  let foulOpen = false;
+
+  function renderScoreboard() {
+    const f = S.frame;
+    const player = i => {
+      const active = f.cur === i && !f.ended;
+      const brk = active && f.brk > 0 ? `<span class="brk-now">Break ${f.brk}</span>` : '';
+      return `<div class="player p${i} ${active ? 'active' : ''}">
+        <div class="pname"><span class="cue"></span><span>${esc(S.names[i])}</span></div>
+        <div class="score">${f.scores[i]}</div>
+        <div class="pmeta">${brk}<span>Höchster <b>${f.high[i]}</b></span></div>
+        <div class="dots">${active ? dots(f.brkBalls) : ''}</div>
+      </div>`;
+    };
+    const status = S.matchOver ? 'Match beendet' : `Frame ${S.frameNo}`;
+    $('scoreboard').innerHTML = `${player(0)}
+      <div class="centre">
+        <div class="frames"><span class="num">${S.frames[0]}</span><span>–</span><span class="num">${S.frames[1]}</span></div>
+        <div class="bo">Best of ${S.bestOf}<br>${status}</div>
+      </div>${player(1)}`;
+  }
+
+  function renderStatus() {
+    const f = S.frame, on = ballOn(f), sit = situation(f);
+    const d = f.scores[0] - f.scores[1];
+    const diffTxt = d === 0 ? '0' : `${Math.abs(d)} <small>${esc(S.names[d > 0 ? 0 : 1])}</small>`;
+    const onTxt = on.id ? `${dot(on.id)}${on.label}` : (f.ended ? '–' : `<span class="dot" style="background:conic-gradient(var(--yellow),var(--green),var(--brown),var(--blue),var(--pink),var(--black),var(--yellow))"></span>${on.label}`);
+    const fb = f.freeBall ? ' <small>Free Ball</small>' : '';
+    $('status').innerHTML = `
+      <div class="tile"><div class="k">Restwert</div><div class="v">${remaining(f)}</div></div>
+      <div class="tile"><div class="k">Differenz</div><div class="v">${diffTxt}</div></div>
+      <div class="tile"><div class="k">Rote übrig</div><div class="v">${dot('red')}${f.reds}</div></div>
+      <div class="tile"><div class="k">Ball on</div><div class="v">${onTxt}${fb}</div></div>
+      <div class="msg ${sit.cls}">${esc(sit.text)}</div>`;
+  }
+
+  function renderBalls() {
+    const f = S.frame, on = ballOn(f);
+    const cells = ORDER.map((id, i) => {
+      const b = BALLS[id], ok = legal(f, id);
+      const dark = id === 'yellow' || id === 'pink' ? ' dark-text' : '';
+      const isOn = on.id === id || (on.id === null && !f.ended && f.phase === 'reds' && id !== 'red');
+      return `<div class="ball-cell ${ok ? '' : 'disabled'}">
+        <button class="ball ${id}${dark}${isOn ? ' on' : ''}" style="--c:${b.css}" data-ball="${id}" ${ok ? '' : 'disabled'} aria-label="${b.name} (${b.v})" title="Taste ${i + 1}">${b.v}</button>
+        <span class="bl">${b.name}</span></div>`;
+    }).join('');
+    const fbOk = !f.ended && f.brk === 0 && !(f.phase === 'reds' && f.expect === 'colour');
+    const cue = `<div class="ball-cell ${fbOk ? '' : 'disabled'}">
+      <button class="ball cueball${f.freeBall ? ' fb-on' : ''}" style="--c:var(--cue)" id="btn-fb" ${fbOk ? '' : 'disabled'} aria-pressed="${f.freeBall}" title="Taste B">FREE</button>
+      <span class="bl">Free Ball</span></div>`;
+    $('balls').innerHTML = `<div class="ball-row">${cells}${cue}</div>`;
+  }
+
+  function renderActions() {
+    const f = S.frame, live = !f.ended;
+    const sug = minFoul(f);
+    const foulBox = foulOpen && live ? `<div class="foul-box">
+        <span class="k">Foul – Wert</span>
+        ${[4, 5, 6, 7].map(v => `<button class="btn${v === sug ? ' suggest' : ''}" data-foul="${v}">${v}</button>`).join('')}
+        <button class="x" id="btn-foul-close" aria-label="Abbrechen">×</button>
+      </div>` : '';
+    const nextLabel = S.matchOver ? 'Match beendet' : 'Nächster Frame';
+    $('actions').innerHTML = `
+      <div class="row">
+        <button class="btn foul" id="btn-foul" aria-expanded="${foulOpen}" ${live ? '' : 'disabled'}>Foul</button>
+        <button class="btn" id="btn-safety" ${live ? '' : 'disabled'}>Sicherheit<span class="sub">Break-Ende</span></button>
+        <button class="btn" id="btn-undo" ${S.undo.length ? '' : 'disabled'}>Rückgängig</button>
+      </div>
+      ${foulBox}
+      <div class="row">
+        <button class="btn" id="btn-swap" ${live && f.brk === 0 ? '' : 'disabled'}>Wechsel</button>
+        <button class="btn danger" id="btn-concede" ${live && f.scores[0] !== f.scores[1] ? '' : 'disabled'}>Frame aufgeben</button>
+        <button class="btn ${f.ended && !S.matchOver ? 'primary' : ''}" id="btn-next" ${f.ended && !S.matchOver ? '' : 'disabled'}>${nextLabel}</button>
+      </div>`;
+  }
+
+  function renderLog() {
+    const f = S.frame;
+    const items = f.visits.slice().reverse().map(v => {
+      const who = esc(S.names[v.p]);
+      if (v.foul != null) {
+        const brk = v.brk > 0 ? `Break ${v.brk}, dann ` : '';
+        return `<li class="visit p${v.p}"><span class="bar"></span>
+          <span><span class="who">${who}</span> <span class="what f">${brk}Foul · ${v.foul} für ${esc(S.names[1 - v.p])}</span>
+          <div class="dots">${dots(v.balls)}</div></span><span class="pts">${v.brk || ''}</span></li>`;
+      }
+      return `<li class="visit p${v.p}"><span class="bar"></span>
+        <span><span class="who">${who}</span> <span class="what">${esc(v.reason || '')}</span>
+        <div class="dots">${dots(v.balls)}</div></span><span class="pts">${v.brk}</span></li>`;
+    }).join('');
+    const results = S.results.map((r, i) =>
+      `<span class="res">F${i + 1} <b>${r.scores[0]}–${r.scores[1]}</b> ${esc(S.names[r.winner])}</span>`).join('');
+    $('log').innerHTML = `
+      <h2>Verlauf <span>Frame ${S.frameNo}</span></h2>
+      ${items ? `<ul class="visits">${items}</ul>` : '<div class="empty">Noch kein Break in diesem Frame.</div>'}
+      ${results ? `<h2>Frames</h2><div class="results">${results}</div>` : ''}`;
+  }
+
+  function renderSettings() {
+    $('name0').value = S.names[0]; $('name1').value = S.names[1];
+    const sel = $('bestof');
+    sel.innerHTML = BEST_OF.map(n => `<option value="${n}" ${n === S.bestOf ? 'selected' : ''}>Best of ${n} (${Math.ceil(n / 2)} Frames)</option>`).join('');
+  }
+
+  function render() { renderScoreboard(); renderStatus(); renderBalls(); renderActions(); renderLog(); }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  // ---------- Events ----------
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.ball) return pot(t.dataset.ball);
+    if (t.dataset.foul) return foul(+t.dataset.foul);
+    switch (t.id) {
+      case 'btn-fb': return toggleFreeBall();
+      case 'btn-foul': foulOpen = !foulOpen; return renderActions();
+      case 'btn-foul-close': foulOpen = false; return renderActions();
+      case 'btn-safety': return safety();
+      case 'btn-undo': return undo();
+      case 'btn-swap': return swap();
+      case 'btn-concede': return concede();
+      case 'btn-next': return nextFrame();
+      case 'btn-settings': return togglePanel('settings');
+      case 'btn-settings-close': return togglePanel('settings', false);
+      case 'btn-help': return togglePanel('help');
+      case 'btn-help-close': return togglePanel('help', false);
+      case 'btn-newmatch': return armReset(t);
+    }
+  });
+
+  let resetArmed = null;
+  function armReset(btn) {
+    if (resetArmed) { clearTimeout(resetArmed); resetArmed = null; btn.textContent = 'Neues Match'; resetMatch(); togglePanel('settings', false); return; }
+    btn.textContent = 'Wirklich? Nochmal drücken';
+    resetArmed = setTimeout(() => { resetArmed = null; btn.textContent = 'Neues Match'; }, 4000);
+  }
+  function togglePanel(id, force) {
+    const el = $(id), btn = $('btn-' + id);
+    const open = force == null ? el.hidden : force;
+    el.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+    if (open) { const other = id === 'settings' ? 'help' : 'settings'; $(other).hidden = true; $('btn-' + other).setAttribute('aria-expanded', 'false'); }
+    if (id === 'settings' && open) { renderSettings(); $('name0').focus(); }
+  }
+  ['name0', 'name1'].forEach((id, i) => $(id).addEventListener('input', e => {
+    S.names[i] = e.target.value.trim() || `Spieler ${i + 1}`; save();
+    renderScoreboard(); renderStatus(); renderLog();
+  }));
+  $('bestof').addEventListener('change', e => {
+    S.bestOf = +e.target.value;
+    S.matchOver = S.frames[0] > S.bestOf / 2 || S.frames[1] > S.bestOf / 2;
+    commit();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k >= '1' && k <= '7') { pot(ORDER[+k - 1]); e.preventDefault(); }
+    else if (k === 's') safety();
+    else if (k === 'f') { foulOpen = !foulOpen; renderActions(); }
+    else if (k === 'b') toggleFreeBall();
+    else if (k === 'u' || (k === 'z')) undo();
+    else if (k === 'w') swap();
+    else if (k === 'escape') { foulOpen = false; renderActions(); }
+    else if (k === 'enter' && S.frame.ended) nextFrame();
+  });
+
+  renderSettings();
+  render();
+})();
+</script>
